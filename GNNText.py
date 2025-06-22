@@ -2,7 +2,6 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer, DataCollatorForLanguage
 from transformers import Trainer, TrainingArguments, TrainerCallback, EarlyStoppingCallback
 from torch.utils.tensorboard import SummaryWriter
 from datasets import load_dataset
-from sklearn.metrics import mean_squared_error, r2_score
 from textwrap import wrap
 import evaluate
 import subprocess
