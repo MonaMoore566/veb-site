@@ -4,4 +4,3 @@ tensorboard
 gunicorn 
 transformers
 datasets
-sklearn
