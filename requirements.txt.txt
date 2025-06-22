@@ -1,0 +1,4 @@
+flask
+torch
+tensorboard
+gunicorn 
