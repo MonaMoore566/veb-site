@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>ИИ-ассистент</title>
+
+	<link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+</head>
+<body>
+	<main class="main">
+		<section class="block-parametrs">
+			<div class="container-1">
+				<h1>ИИ-ассистент Chiper</h1>
+				<div class="controls">
+					<h3>Параметры генерации</h3>
+					<div class="control-group">
+						<label for="max_length">Длина текста:</label>
+						<input type="number" id="max_length" value="30" min="10" max="500">
+					</div>
+					<div class="control-group">
+						<label for="temperature">Temperature:</label>
+						<input type="number" id="temperature" value="0.6" min="0.1" max="1.5" step="0.1">
+					</div>
+					<div class="control-group">
+						<label for="top_k">Top-K:</label>
+						<input type="number" id="top_k" value="20" min="1" max="100">
+					</div>
+					<div class="control-group">
+						<label for="top_p">Top-P:</label>
+						<input type="number" id="top_p" value="0.60" min="0.1" max="1" step="0.05">
+					</div>
+					<button id="init-btn" onclick="initModel()">Инициализировать модель</button>
+				</div>
+				<div class="icons left">
+					<a href="https://web.telegram.org/k/"><img class="icon" src="{{ url_for('static', filename='img/TG.svg') }}" alt="Telegram"></a>
+					<a href="https://steamcommunity.com/profiles/76561198313293850/"><img class="icon" src="{{ url_for('static', filename='img/steam.svg') }}" alt="Steam"></a>
+					<a href="https://vk.com/id457216813"><img class="icon" src="{{ url_for('static', filename='img/VK.svg') }}" alt="VK"></a>
+				</div>
+			</div>
+		</section>
+		<section class="block-chat-bot">
+			<div class="container-2">
+				<div class="chat">
+					<div id="status" class="status"></div>
+					<div class="chat-box" id="chat-box"></div>
+					<div class="input-button">
+						<div class="input-zapros">
+							<textarea id="prompt" placeholder="Введите ваш запрос..."></textarea>
+						</div>
+						<div class="info">
+							<div class="icons bottom">
+								<a href="https://web.telegram.org/k/"><img class="icon" src="{{ url_for('static', filename='img/TG.svg') }}" alt="Telegram"></a>
+								<a href="https://steamcommunity.com/profiles/76561198313293850/"><img class="icon" src="{{ url_for('static', filename='img/steam.svg') }}" alt="Steam"></a>
+								<a href="https://vk.com/id457216813"><img class="icon" src="{{ url_for('static', filename='img/VK.svg') }}" alt="VK"></a>
+							</div>
+							<button class="button-input" id="send-btn" onclick="sendPrompt()">Отправить</button>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+		</section>
+	</main>
+	<script>
+        function updateStatus(message, isError = false) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = isError ? 'status status-error' : 'status status-success';
+        }
+
+        function addMessage(text, isUser = true) {
+            const chatBox = document.getElementById('chat-box');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = isUser ? 'message user-message' : 'message ai-message';
+            messageDiv.textContent = text;
+            chatBox.appendChild(messageDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function initModel() {
+            const btn = document.getElementById('init-btn');
+            btn.disabled = true;
+            updateStatus("Инициализация модели...");
+            
+            fetch('/init', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    updateStatus(data.message);
+                    checkStatus();
+                } else {
+                    updateStatus(data.message, true);
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                updateStatus("Ошибка при инициализации: " + error, true);
+                btn.disabled = false;
+            });
+        }
+
+        function sendPrompt() {
+            const prompt = document.getElementById('prompt').value.trim();
+            if (!prompt) return;
+            
+            const max_length = document.getElementById('max_length').value;
+            const temperature = document.getElementById('temperature').value;
+            const top_k = document.getElementById('top_k').value;
+            const top_p = document.getElementById('top_p').value;
+            
+            addMessage(prompt, true);
+            document.getElementById('prompt').value = '';
+            document.getElementById('send-btn').disabled = true;
+            
+            fetch('/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    'prompt': prompt,
+                    'max_length': max_length,
+                    'temperature': temperature,
+                    'top_k': top_k,
+                    'top_p': top_p
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    addMessage("Ошибка: " + data.error, false);
+                } else {
+                    addMessage(data.response, false);
+                }
+                document.getElementById('send-btn').disabled = false;
+            })
+            .catch(error => {
+                addMessage("Ошибка соединения: " + error, false);
+                document.getElementById('send-btn').disabled = false;
+            });
+        }
+
+        function checkStatus() {
+            fetch('/status')
+            .then(response => response.json())
+            .then(data => {
+                let statusText = `Статус: ${data.initialized ? 'Модель инициализирована' : 'Модель не инициализирована'}`;
+                if (data.initialized) {
+                    statusText += ` | Устройство: ${data.device}`;
+                }
+                updateStatus(statusText);
+            });
+        }
+
+        // Проверяем статус при загрузке страницы
+        checkStatus();
+        
+        // Отправка по Enter (но не Shift+Enter)
+        document.getElementById('prompt').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendPrompt();
+            }
+        });
+    </script>
+</body>
+</html>
+            
